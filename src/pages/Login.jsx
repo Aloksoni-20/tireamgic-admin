@@ -10,7 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-const LOGO_URL = "/src/assets/Tire Magician.JPG-B-oH-vuV.jpg";
+const LOGO_URL = "/src/assets/Tire magician.JPG-B-oH-vuV.jpg";
 const BRAND_BLUE = "#006EFB";
 
 export default function Login() {
@@ -40,9 +40,9 @@ export default function Login() {
 
     // Frontend demo navigation only; no credentials are verified.
     if (rememberMe) {
-      sessionStorage.setItem("tyremagic_demo_login", "true");
+      sessionStorage.setItem("Tiremagic_demo_login", "true");
     } else {
-      sessionStorage.removeItem("tyremagic_demo_login");
+      sessionStorage.removeItem("Tiremagic_demo_login");
     }
 
     navigate("/admin", { replace: true });
@@ -66,14 +66,14 @@ export default function Login() {
             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5">
               <img
                 src={LOGO_URL}
-                alt="TyreMagic logo"
+                alt="Tiremagic logo"
                 className="h-full w-full object-contain"
               />
             </div>
 
             <div>
               <h1 className="text-xl font-bold tracking-tight">
-                TyreMagic
+                Tiremagic
               </h1>
               <p className="text-sm text-white/80">
                 Administration Portal
@@ -83,16 +83,16 @@ export default function Login() {
 
           {/* Branding content */}
           <div className="relative z-10 my-12">
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
+            {/* <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
               <ShieldCheck size={28} className="text-white" />
-            </div>
+            </div> */}
 
-            <h2 className="max-w-sm text-4xl font-bold leading-tight tracking-tight xl:text-5xl">
+            {/* <h2 className="max-w-sm text-4xl font-bold leading-tight tracking-tight xl:text-5xl">
               Your business.
               <span className="mt-2 block text-white/80">
                 Under control.
               </span>
-            </h2>
+            </h2> */}
 
             <p className="mt-6 max-w-sm text-base leading-7 text-white/80">
               Manage orders, installer partners, and affiliate partners
@@ -118,7 +118,7 @@ export default function Login() {
           </div>
 
           <p className="relative z-10 text-xs text-white/70">
-            © {new Date().getFullYear()} TyreMagic. All rights reserved.
+            © {new Date().getFullYear()} Tiremagic. All rights reserved.
           </p>
         </section>
 
@@ -130,14 +130,14 @@ export default function Login() {
               <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-white p-1.5">
                 <img
                   src={LOGO_URL}
-                  alt="TyreMagic logo"
+                  alt="Tiremagic logo"
                   className="h-full w-full object-contain"
                 />
               </div>
 
               <div>
                 <h1 className="text-xl font-bold text-slate-900">
-                  TyreMagic
+                  Tiremagic
                 </h1>
                 <p className="text-xs text-slate-500">
                   Administration Portal
@@ -182,7 +182,7 @@ export default function Login() {
                     name="email"
                     type="email"
                     autoComplete="username"
-                    placeholder="admin@tyremagic.com"
+                    placeholder="admin@Tiremagic.com"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#006EFB] focus:ring-4 focus:ring-[#006EFB]/10"
@@ -290,11 +290,11 @@ export default function Login() {
             </div>
 
             <p className="text-center text-xs leading-5 text-slate-500">
-              This portal is intended for authorized TyreMagic administrators.
+              This portal is intended for authorized Tiremagic administrators.
             </p>
 
             <p className="mt-8 text-center text-xs text-slate-400 lg:hidden">
-              © {new Date().getFullYear()} TyreMagic
+              © {new Date().getFullYear()} Tiremagic
             </p>
           </div>
         </section>
