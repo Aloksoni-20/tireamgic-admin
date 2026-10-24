@@ -4,81 +4,12 @@ import { Eye, Package } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { orders } from "../../data/orders";
 
-const statusStyles = {
-  Pending:
-    "bg-amber-50 text-amber-700 border-amber-200",
-
-  Confirmed:
-    "bg-blue-50 text-blue-700 border-blue-200",
-
-  Processing:
-    "bg-violet-50 text-violet-700 border-violet-200",
-
-  "Ready for Delivery":
-    "bg-cyan-50 text-cyan-700 border-cyan-200",
-
-  "Out for Delivery":
-    "bg-indigo-50 text-indigo-700 border-indigo-200",
-
-  Delivered:
-    "bg-emerald-50 text-emerald-700 border-emerald-200",
-
-  Cancelled:
-    "bg-red-50 text-red-700 border-red-200",
-
-  Refunded:
-    "bg-gray-100 text-gray-700 border-gray-200",
-};
-
-const paymentStyles = {
-  Paid:
-    "bg-emerald-50 text-emerald-700 border-emerald-200",
-
-  Pending:
-    "bg-amber-50 text-amber-700 border-amber-200",
-
-  Failed:
-    "bg-red-50 text-red-700 border-red-200",
-
-  Refunded:
-    "bg-gray-100 text-gray-700 border-gray-200",
-
-  "Partially Refunded":
-    "bg-orange-50 text-orange-700 border-orange-200",
-};
-
 function formatCurrency(amount) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-function StatusBadge({ status }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
-        statusStyles[status] ||
-        "border-gray-200 bg-gray-50 text-gray-700"
-      }`}
-    >
-      {status}
-    </span>
-  );
-}
-
-function PaymentBadge({ status }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
-        paymentStyles[status] ||
-        "border-gray-200 bg-gray-50 text-gray-700"
-      }`}
-    >
-      {status}
-    </span>
-  );
 }
 
 function getInitials(name) {
@@ -117,9 +48,7 @@ export default function Orders() {
           <div className="mb-1 flex items-center gap-2 text-sm text-gray-500">
             <span>Admin</span>
             <span>/</span>
-            <span className="text-gray-900">
-              Orders
-            </span>
+            <span className="text-gray-900">Orders</span>
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">
@@ -148,7 +77,7 @@ export default function Orders() {
 
           {/* Desktop Table */}
           <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[1100px]">
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70 text-left">
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -168,14 +97,6 @@ export default function Orders() {
                   </th>
 
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Payment
-                  </th>
-
-                  <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Status
-                  </th>
-
-                  <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Date
                   </th>
 
@@ -190,7 +111,7 @@ export default function Orders() {
                   orders.map((order) => (
                     <tr
                       key={order.id}
-                      className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60"
+                      className="border-b border-gray-100 last:border-0 transition-colors hover:bg-gray-50/60"
                     >
                       {/* Order */}
                       <td className="px-5 py-4">
@@ -203,9 +124,7 @@ export default function Orders() {
 
                         <p className="mt-1 text-xs text-gray-500">
                           {order.items.length}{" "}
-                          {order.items.length === 1
-                            ? "item"
-                            : "items"}
+                          {order.items.length === 1 ? "item" : "items"}
                         </p>
                       </td>
 
@@ -248,28 +167,8 @@ export default function Orders() {
                       {/* Amount */}
                       <td className="px-5 py-4">
                         <p className="text-sm font-bold text-gray-900">
-                          {formatCurrency(
-                            order.pricing.grandTotal
-                          )}
+                          {formatCurrency(order.pricing.grandTotal)}
                         </p>
-                      </td>
-
-                      {/* Payment */}
-                      <td className="px-5 py-4">
-                        <PaymentBadge
-                          status={order.payment.status}
-                        />
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          {order.payment.method}
-                        </p>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-5 py-4">
-                        <StatusBadge
-                          status={order.orderStatus}
-                        />
                       </td>
 
                       {/* Date */}
@@ -293,7 +192,7 @@ export default function Orders() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8">
+                    <td colSpan={6}>
                       <EmptyState />
                     </td>
                   </tr>
@@ -310,11 +209,12 @@ export default function Orders() {
                   key={order.id}
                   className="p-4 sm:p-5"
                 >
+                  {/* Order ID and Date */}
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <Link
                         to={`/admin/orders/${order.id}`}
-                        className="font-semibold text-blue-600"
+                        className="font-semibold text-blue-600 hover:text-blue-700"
                       >
                         {order.id}
                       </Link>
@@ -324,12 +224,14 @@ export default function Orders() {
                       </p>
                     </div>
 
-                    <StatusBadge
-                      status={order.orderStatus}
-                    />
+                    <p className="text-sm font-bold text-gray-900">
+                      {formatCurrency(order.pricing.grandTotal)}
+                    </p>
                   </div>
 
+                  {/* Customer and Partner */}
                   <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {/* Customer */}
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                         Customer
@@ -344,6 +246,7 @@ export default function Orders() {
                       </p>
                     </div>
 
+                    {/* Partner */}
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                         Partner
@@ -358,34 +261,23 @@ export default function Orders() {
                       </p>
                     </div>
 
+                    {/* Order Items */}
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                        Amount
+                        Items
                       </p>
 
-                      <p className="mt-1 text-sm font-bold text-gray-900">
-                        {formatCurrency(
-                          order.pricing.grandTotal
-                        )}
+                      <p className="mt-1 text-sm text-gray-700">
+                        {order.items.length}{" "}
+                        {order.items.length === 1 ? "item" : "items"}
                       </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                        Payment
-                      </p>
-
-                      <div className="mt-1">
-                        <PaymentBadge
-                          status={order.payment.status}
-                        />
-                      </div>
                     </div>
                   </div>
 
+                  {/* View Order */}
                   <Link
                     to={`/admin/orders/${order.id}`}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                   >
                     <Eye size={16} />
                     View Order
