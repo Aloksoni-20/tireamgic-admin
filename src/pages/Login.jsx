@@ -6,46 +6,50 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
-  ShieldCheck,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
+import useAuth from "../customHooks/useAuth";
 
 const LOGO_URL = "/src/assets/Tire magician.JPG-B-oH-vuV.jpg";
-const BRAND_BLUE = "#006EFB";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, loading, error: authError, clearError } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
 
-  function handleSubmit(event) {
+  const displayError = validationError || authError;
+
+  async function handleSubmit(event) {
     event.preventDefault();
-    setError("");
+    setValidationError("");
+    clearError();
 
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail || !password) {
-      setError("Please enter your email and password.");
+      setValidationError("Please enter your email and password.");
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setError("Please enter a valid email address.");
+      setValidationError("Please enter a valid email address.");
       return;
     }
 
-    // Frontend demo navigation only; no credentials are verified.
-    if (rememberMe) {
-      sessionStorage.setItem("Tiremagic_demo_login", "true");
-    } else {
-      sessionStorage.removeItem("Tiremagic_demo_login");
-    }
+    const result = await login({
+      email: normalizedEmail,
+      password,
+    });
 
-    navigate("/admin", { replace: true });
+    if (result.success) {
+      navigate("/admin", { replace: true });
+    }
   }
 
   return (
@@ -258,26 +262,36 @@ export default function Login() {
                 </span>
               </label>
 
-              {/* Validation message */}
-              {error && (
+              {/* Validation or API error message */}
+              {displayError && (
                 <div
                   role="alert"
                   className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                 >
-                  {error}
+                  {displayError}
                 </div>
               )}
 
               {/* Submit */}
               <button
                 type="submit"
-                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#006EFB] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0059D6] focus:outline-none focus:ring-4 focus:ring-[#006EFB]/20"
+                disabled={loading}
+                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#006EFB] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0059D6] focus:outline-none focus:ring-4 focus:ring-[#006EFB]/20 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Sign in to dashboard
-                <ArrowRight
-                  size={17}
-                  className="transition-transform group-hover:translate-x-1"
-                />
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign in to dashboard
+                    <ArrowRight
+                      size={17}
+                      className="transition-transform group-hover:translate-x-1"
+                    />
+                  </>
+                )}
               </button>
             </form>
 

@@ -8,7 +8,8 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import useAuth from "../../customHooks/useAuth";
 
 const mainMenuItems = [
   {
@@ -38,6 +39,13 @@ const partnerMenuItems = [
 
 function Sidebar({ mobileOpen, onClose }) {
   const [partnersOpen, setPartnersOpen] = useState(true);
+  const navigate = useNavigate();
+  const { logout, user } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <>
@@ -192,23 +200,28 @@ function Sidebar({ mobileOpen, onClose }) {
         <div className="shrink-0 border-t border-slate-200 bg-white p-4">
           <div className="mb-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-700">
-              AD
+              {user?.name
+                ? user.name.slice(0, 2).toUpperCase()
+                : user?.email
+                ? user.email.slice(0, 2).toUpperCase()
+                : "AD"}
             </div>
 
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-900">
-                Admin User
+                {user?.name || user?.email || "Admin User"}
               </p>
 
               <p className="truncate text-xs text-slate-500">
-                Administrator
+                {user?.role || "Administrator"}
               </p>
             </div>
           </div>
 
           <button
             type="button"
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-600"
+            onClick={handleLogout}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-600"
           >
             <LogOut size={18} />
 
