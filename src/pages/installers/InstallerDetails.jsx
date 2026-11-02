@@ -1,12 +1,14 @@
 import {
   ArrowLeft,
+  Ban,
   Building2,
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Eye,
+  Loader2,
   Mail,
   MapPin,
-  Pencil,
   Phone,
   ShoppingCart,
   User,
@@ -15,38 +17,85 @@ import {
 import { Link, useParams } from "react-router-dom";
 
 import AdminLayout from "../../components/layout/AdminLayout";
-import { installers } from "../../data/installers";
+import { useInstallerById } from "../../customHooks/useInstaller";
 
 function StatusBadge({ status }) {
+  const normalized = (status || "").toLowerCase();
+
   const statusStyles = {
-    Pending: {
+    pending: {
+      label: "Pending",
       wrapper: "bg-amber-50 text-amber-700 ring-amber-200",
       dot: "bg-amber-500",
     },
-    Approved: {
+    approved: {
+      label: "Approved",
       wrapper: "bg-emerald-50 text-emerald-700 ring-emerald-200",
       dot: "bg-emerald-500",
     },
-    Rejected: {
+    rejected: {
+      label: "Rejected",
       wrapper: "bg-red-50 text-red-700 ring-red-200",
       dot: "bg-red-500",
     },
+    reject: {
+      label: "Rejected",
+      wrapper: "bg-red-50 text-red-700 ring-red-200",
+      dot: "bg-red-500",
+    },
+    blocked: {
+      label: "Blocked",
+      wrapper: "bg-slate-100 text-slate-700 ring-slate-300",
+      dot: "bg-slate-600",
+    },
   };
 
-  const style =
-    statusStyles[status] || {
-      wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
-      dot: "bg-slate-400",
-    };
+  const style = statusStyles[normalized] || {
+    label: status || "Unknown",
+    wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
+    dot: "bg-slate-400",
+  };
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style.wrapper}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {status}
+      {style.label}
     </span>
   );
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "ΓÇö";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCurrency(amount) {
+  if (amount == null || isNaN(amount)) return "$0.00";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function getInitials(name) {
+  if (!name) return "IN";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function InfoItem({ label, value, icon: Icon }) {
@@ -65,7 +114,7 @@ function InfoItem({ label, value, icon: Icon }) {
         )}
 
         <p className="break-all text-sm font-medium text-slate-800">
-          {value || "—"}
+          {value ?? "ΓÇö"}
         </p>
       </div>
     </div>
@@ -74,10 +123,26 @@ function InfoItem({ label, value, icon: Icon }) {
 
 function InstallerDetails() {
   const { id } = useParams();
+  const { installer, loading, updatingStatus, updateStatus } =
+    useInstallerById(id);
 
-  const installer = installers.find(
-    (item) => item.id === id
-  );
+  const handleStatusChange = async (newStatus) => {
+    try {
+      await updateStatus(newStatus);
+    } catch {
+      // Error is logged in hook
+    }
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="mx-auto flex min-h-[400px] max-w-[1200px] items-center justify-center">
+          <Loader2 size={32} className="animate-spin text-blue-600" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   // Partner not found
   if (!installer) {
@@ -118,12 +183,9 @@ function InstallerDetails() {
     );
   }
 
-  const initials = installer.fullName
-    .split(" ")
-    .map((name) => name[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(installer.name);
+  const currentStatus = (installer.status || "").toLowerCase();
+  const orders = Array.isArray(installer.orders) ? installer.orders : [];
 
   return (
     <AdminLayout>
@@ -155,17 +217,17 @@ function InstallerDetails() {
                 <div className="pb-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-xl font-bold text-slate-900 md:text-2xl">
-                      {installer.fullName}
+                      {installer.name || "ΓÇö"}
                     </h1>
 
                     <StatusBadge status={installer.status} />
                   </div>
 
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
-                    <span>{installer.id}</span>
+                    <span>{installer.installerCode || installer.id}</span>
 
                     <span className="hidden text-slate-300 sm:inline">
-                      •
+                      ΓÇó
                     </span>
 
                     <span>Installer Partner</span>
@@ -174,51 +236,55 @@ function InstallerDetails() {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Pencil size={16} />
-                  Edit
-                </button>
-
-                {installer.status === "Pending" && (
-                  <>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </button>
-
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                    >
-                      <CheckCircle2 size={16} />
-                      Approve
-                    </button>
-                  </>
-                )}
-
-                {installer.status === "Approved" && (
+              <div className="flex flex-wrap items-center gap-2">
+                {currentStatus !== "pending" && (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("pending")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Clock3 size={16} />
+                    Set Pending
+                  </button>
+                )}
+
+                {currentStatus !== "rejected" && currentStatus !== "reject" && (
+                  <button
+                    type="button"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("reject")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <XCircle size={16} />
                     Reject
                   </button>
                 )}
 
-                {installer.status === "Rejected" && (
+                {currentStatus !== "blocked" && (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("blocked")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <CheckCircle2 size={16} />
+                    <Ban size={16} />
+                    Block
+                  </button>
+                )}
+
+                {currentStatus !== "approved" && (
+                  <button
+                    type="button"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("approved")}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {updatingStatus ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={16} />
+                    )}
                     Approve
                   </button>
                 )}
@@ -252,7 +318,7 @@ function InstallerDetails() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <InfoItem
                   label="Full Name"
-                  value={installer.fullName}
+                  value={installer.name}
                 />
 
                 <InfoItem
@@ -263,7 +329,7 @@ function InstallerDetails() {
 
                 <InfoItem
                   label="Phone Number"
-                  value={installer.phone}
+                  value={installer.phoneNumber}
                   icon={Phone}
                 />
               </div>
@@ -295,8 +361,8 @@ function InstallerDetails() {
                 />
 
                 <InfoItem
-                  label="City"
-                  value={installer.city}
+                  label="Location"
+                  value={installer.location}
                   icon={MapPin}
                 />
 
@@ -318,7 +384,7 @@ function InstallerDetails() {
 
                   <div>
                     <h2 className="font-semibold text-slate-900">
-                      Orders
+                      Orders ({orders.length})
                     </h2>
 
                     <p className="mt-1 text-xs text-slate-500">
@@ -327,28 +393,93 @@ function InstallerDetails() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
+                <Link
+                  to="/admin/orders"
                   className="text-sm font-semibold text-slate-700 hover:text-slate-900"
                 >
                   View All Orders
-                </button>
+                </Link>
               </div>
 
-              <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
-                  <ShoppingCart size={19} />
+              {orders.length > 0 ? (
+                <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[560px] text-left">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/70">
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Order Number
+                        </th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Customer
+                        </th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Amount
+                        </th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Date
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr
+                          key={order.id}
+                          className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                        >
+                          <td className="px-4 py-3.5 text-sm font-semibold text-blue-600">
+                            <Link
+                              to={`/admin/orders/${order.id}`}
+                              className="hover:underline"
+                            >
+                              {order.orderNumber || order.id}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <p className="text-sm font-medium text-slate-900">
+                              {order.customer?.name || "ΓÇö"}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {order.customer?.email || "ΓÇö"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm font-bold text-slate-900">
+                            {formatCurrency(order.amount)}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-slate-600">
+                            {formatDate(order.date)}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <Link
+                              to={`/admin/orders/${order.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <Eye size={14} />
+                              View
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              ) : (
+                <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+                    <ShoppingCart size={19} />
+                  </div>
 
-                <p className="mt-3 text-sm font-semibold text-slate-800">
-                  No orders available
-                </p>
+                  <p className="mt-3 text-sm font-semibold text-slate-800">
+                    No orders available
+                  </p>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  Installer orders will appear here once the
-                  order API is connected.
-                </p>
-              </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    No orders have been placed with this installer yet.
+                  </p>
+                </div>
+              )}
             </section>
           </div>
 
@@ -381,7 +512,7 @@ function InstallerDetails() {
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {installer.appliedAt}
+                      {formatDate(installer.appliedOn)}
                     </p>
                   </div>
                 </div>
@@ -394,11 +525,11 @@ function InstallerDetails() {
 
                   <div>
                     <p className="text-xs text-slate-400">
-                      Application ID
+                      Installer Code
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {installer.id}
+                      {installer.installerCode || installer.id}
                     </p>
                   </div>
                 </div>
@@ -418,11 +549,11 @@ function InstallerDetails() {
 
                 <div>
                   <p className="text-xs text-slate-400">
-                    City
+                    Location
                   </p>
 
                   <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {installer.city}
+                    {installer.location || "ΓÇö"}
                   </p>
                 </div>
               </div>
@@ -449,13 +580,13 @@ function InstallerDetails() {
                     </p>
 
                     <p className="truncate text-sm font-medium text-slate-700">
-                      {installer.email}
+                      {installer.email || "ΓÇö"}
                     </p>
                   </div>
                 </a>
 
                 <a
-                  href={`tel:${installer.phone}`}
+                  href={`tel:${installer.phoneNumber}`}
                   className="flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50"
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -468,7 +599,7 @@ function InstallerDetails() {
                     </p>
 
                     <p className="text-sm font-medium text-slate-700">
-                      {installer.phone}
+                      {installer.phoneNumber ?? "ΓÇö"}
                     </p>
                   </div>
                 </a>

@@ -1,72 +1,106 @@
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  IndianRupee,
+  Building2,
+  DollarSign,
+  Eye,
+  Loader2,
   ShoppingCart,
   Users,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+
 import AdminLayout from "../components/layout/AdminLayout";
+import useDashboard from "../customHooks/useDashboard";
 
-const stats = [
-  {
-    title: "Total Partners",
-    value: "124",
-    trend: "up",
-    icon: Users,
-  },
-  {
-    title: "Total Orders",
-    value: "1,248",
-    trend: "up",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Total Revenue",
-    value: "₹4.28L",
-    trend: "up",
-    icon: IndianRupee,
-  },
-];
+function formatCurrency(amount) {
+  if (amount == null || isNaN(amount)) return "$0.00";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
-const recentOrders = [
-  {
-    id: "#TM-10045",
-    partner: "ABC Tyres",
-    customer: "Rahul Sharma",
-    amount: "₹24,500",
-    date: "09 Oct 2026",
-  },
-  {
-    id: "#TM-10044",
-    partner: "XYZ Motors",
-    customer: "Amit Patel",
-    amount: "₹12,200",
-    date: "09 Oct 2026",
-  },
-  {
-    id: "#TM-10043",
-    partner: "Speed Tyres",
-    customer: "Vikas Jain",
-    amount: "₹18,750",
-    date: "08 Oct 2026",
-  },
-  {
-    id: "#TM-10042",
-    partner: "Auto Wheels",
-    customer: "Mohit Singh",
-    amount: "₹9,800",
-    date: "08 Oct 2026",
-  },
-  {
-    id: "#TM-10041",
-    partner: "Prime Tyres",
-    customer: "Rohit Verma",
-    amount: "₹15,400",
-    date: "07 Oct 2026",
-  },
-];
+function formatDate(dateString) {
+  if (!dateString) return "ΓÇö";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function OrderStatusBadge({ status }) {
+  const normalized = (status || "").toUpperCase();
+
+  const statusStyles = {
+    COMPLETED: {
+      label: "Completed",
+      wrapper: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+      dot: "bg-emerald-500",
+    },
+    PENDING: {
+      label: "Pending",
+      wrapper: "bg-amber-50 text-amber-700 ring-amber-200",
+      dot: "bg-amber-500",
+    },
+    CANCELLED: {
+      label: "Cancelled",
+      wrapper: "bg-red-50 text-red-700 ring-red-200",
+      dot: "bg-red-500",
+    },
+  };
+
+  const style = statusStyles[normalized] || {
+    label: status || "Unknown",
+    wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
+    dot: "bg-slate-400",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style.wrapper}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+      {style.label}
+    </span>
+  );
+}
 
 function Dashboard() {
+  const { dashboard, loading } = useDashboard();
+
+  const stats = [
+    {
+      title: "Total Installers",
+      value: dashboard.totalInstaller,
+      icon: Building2,
+      iconBg: "bg-blue-50 text-blue-600",
+    },
+    {
+      title: "Total Affiliates",
+      value: dashboard.totalAffiliatedPartner,
+      icon: Users,
+      iconBg: "bg-purple-50 text-purple-600",
+    },
+    {
+      title: "Total Orders",
+      value: dashboard.totalOrderNumber,
+      icon: ShoppingCart,
+      iconBg: "bg-amber-50 text-amber-600",
+    },
+    {
+      title: "Total Revenue",
+      value: formatCurrency(dashboard.totalRevenu),
+      icon: DollarSign,
+      iconBg: "bg-emerald-50 text-emerald-600",
+    },
+  ];
+
+  const recentOrders = dashboard.recentOrders || [];
+
   return (
     <AdminLayout>
       <div className="mx-auto max-w-[1600px]">
@@ -86,10 +120,9 @@ function Dashboard() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
-            const isDown = stat.trend === "down";
 
             return (
               <div
@@ -107,7 +140,9 @@ function Dashboard() {
                     </h2>
                   </div>
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconBg}`}
+                  >
                     <Icon size={21} />
                   </div>
                 </div>
@@ -127,14 +162,27 @@ function Dashboard() {
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  Latest orders from your partners
+                  Latest orders across the platform
                 </p>
               </div>
+
+              <Link
+                to="/admin/orders"
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              >
+                View All Orders
+              </Link>
             </div>
 
             {/* Orders Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px]">
+            <div className="relative min-h-[200px] overflow-x-auto">
+              {loading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+                  <Loader2 size={28} className="animate-spin text-blue-600" />
+                </div>
+              )}
+
+              <table className="w-full min-w-[780px]">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/70 text-left">
                     <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -142,7 +190,7 @@ function Dashboard() {
                     </th>
 
                     <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Partner
+                      ATD Order ID
                     </th>
 
                     <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -150,40 +198,91 @@ function Dashboard() {
                     </th>
 
                     <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Payment
+                    </th>
+
+                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Status
+                    </th>
+
+                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
                       Amount
+                    </th>
+
+                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Action
                     </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {recentOrders.map((order) => (
-                    <tr
-                      key={order.id}
-                      className="border-b border-slate-100 last:border-0 transition-colors hover:bg-slate-50/60"
-                    >
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {order.id}
-                        </p>
+                  {recentOrders.length > 0 ? (
+                    recentOrders.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="border-b border-slate-100 last:border-0 transition-colors hover:bg-slate-50/60"
+                      >
+                        <td className="px-5 py-4">
+                          <Link
+                            to={`/admin/orders/${order.id}`}
+                            className="text-sm font-semibold text-blue-600 hover:underline"
+                          >
+                            {order.orderNumber || order.id}
+                          </Link>
 
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          {order.date}
-                        </p>
-                      </td>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            {formatDate(order.createdAt)}
+                          </p>
+                        </td>
 
-                      <td className="px-5 py-4 text-sm text-slate-600">
-                        {order.partner}
-                      </td>
+                        <td className="px-5 py-4 text-sm text-slate-600">
+                          {order.atdOrderId || "ΓÇö"}
+                        </td>
 
-                      <td className="px-5 py-4 text-sm text-slate-600">
-                        {order.customer}
-                      </td>
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-medium text-slate-900">
+                            {order.customer?.name || "ΓÇö"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {order.customer?.email || "ΓÇö"}
+                          </p>
+                        </td>
 
-                      <td className="px-5 py-4 text-sm font-semibold text-slate-900">
-                        {order.amount}
+                        <td className="px-5 py-4">
+                          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                            {order.paymentMethod || "ΓÇö"}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <OrderStatusBadge status={order.status} />
+                        </td>
+
+                        <td className="px-5 py-4 text-sm font-bold text-slate-900">
+                          {formatCurrency(order.amount)}
+                        </td>
+
+                        <td className="px-5 py-4 text-right">
+                          <Link
+                            to={`/admin/orders/${order.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Eye size={14} />
+                            View
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="7"
+                        className="px-5 py-12 text-center text-sm text-slate-500"
+                      >
+                        No recent orders found.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

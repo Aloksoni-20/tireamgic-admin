@@ -205,12 +205,12 @@ export default function Login() {
                     Password
                   </label>
 
-                  <Link
+                  {/* <Link
                     to="/forgot-password"
                     className="text-xs font-semibold text-[#006EFB] transition hover:text-[#0059D6]"
                   >
                     Forgot password?
-                  </Link>
+                  </Link> */}
                 </div>
 
                 <div className="relative">
@@ -308,7 +308,7 @@ export default function Login() {
             </p>
 
             <p className="mt-8 text-center text-xs text-slate-400 lg:hidden">
-              © {new Date().getFullYear()} Tiremagic
+              ┬⌐ {new Date().getFullYear()} Tiremagic
             </p>
           </div>
         </section>

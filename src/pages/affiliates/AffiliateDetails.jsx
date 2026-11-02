@@ -1,49 +1,99 @@
 import {
   ArrowLeft,
+  Ban,
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Eye,
   Globe,
+  Loader2,
   Mail,
-  Pencil,
+  ShoppingCart,
   Users,
   XCircle,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import AdminLayout from "../../components/layout/AdminLayout";
-import { affiliates } from "../../data/affiliates";
+import { useAffiliateById } from "../../customHooks/useAffiliate";
 
 function StatusBadge({ status }) {
+  const normalized = (status || "").toLowerCase();
+
   const statusStyles = {
-    Pending: {
+    pending: {
+      label: "Pending",
       wrapper: "bg-amber-50 text-amber-700 ring-amber-200",
       dot: "bg-amber-500",
     },
-    Approved: {
+    approved: {
+      label: "Approved",
       wrapper: "bg-emerald-50 text-emerald-700 ring-emerald-200",
       dot: "bg-emerald-500",
     },
-    Rejected: {
+    rejected: {
+      label: "Rejected",
       wrapper: "bg-red-50 text-red-700 ring-red-200",
       dot: "bg-red-500",
     },
+    reject: {
+      label: "Rejected",
+      wrapper: "bg-red-50 text-red-700 ring-red-200",
+      dot: "bg-red-500",
+    },
+    blocked: {
+      label: "Blocked",
+      wrapper: "bg-slate-100 text-slate-700 ring-slate-300",
+      dot: "bg-slate-600",
+    },
   };
 
-  const style =
-    statusStyles[status] || {
-      wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
-      dot: "bg-slate-400",
-    };
+  const style = statusStyles[normalized] || {
+    label: status || "Unknown",
+    wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
+    dot: "bg-slate-400",
+  };
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style.wrapper}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {status}
+      {style.label}
     </span>
   );
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "ΓÇö";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCurrency(amount) {
+  if (amount == null || isNaN(amount)) return "$0.00";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function getInitials(name) {
+  if (!name) return "AF";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function InfoItem({ label, value, icon: Icon }) {
@@ -62,7 +112,7 @@ function InfoItem({ label, value, icon: Icon }) {
         )}
 
         <p className="break-all text-sm font-medium text-slate-800">
-          {value || "—"}
+          {value ?? "ΓÇö"}
         </p>
       </div>
     </div>
@@ -71,10 +121,26 @@ function InfoItem({ label, value, icon: Icon }) {
 
 function AffiliateDetails() {
   const { id } = useParams();
+  const { affiliate, loading, updatingStatus, updateStatus } =
+    useAffiliateById(id);
 
-  const affiliate = affiliates.find(
-    (item) => item.id === id
-  );
+  const handleStatusChange = async (newStatus) => {
+    try {
+      await updateStatus(newStatus);
+    } catch {
+      // Error is logged in hook
+    }
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="mx-auto flex min-h-[400px] max-w-[1200px] items-center justify-center">
+          <Loader2 size={32} className="animate-spin text-purple-600" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!affiliate) {
     return (
@@ -114,16 +180,15 @@ function AffiliateDetails() {
     );
   }
 
-  const initials = affiliate.fullName
-    .split(" ")
-    .map((name) => name[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  const websiteUrl = affiliate.website.startsWith("http")
-    ? affiliate.website
-    : `https://${affiliate.website}`;
+  const initials = getInitials(affiliate.name);
+  const currentStatus = (affiliate.status || "").toLowerCase();
+  const website = affiliate.websiteInstagram || "";
+  const websiteUrl = website
+    ? website.startsWith("http")
+      ? website
+      : `https://${website}`
+    : "";
+  const orders = Array.isArray(affiliate.orders) ? affiliate.orders : [];
 
   return (
     <AdminLayout>
@@ -153,17 +218,17 @@ function AffiliateDetails() {
                 <div className="pb-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-xl font-bold text-slate-900 md:text-2xl">
-                      {affiliate.fullName}
+                      {affiliate.name || "ΓÇö"}
                     </h1>
 
                     <StatusBadge status={affiliate.status} />
                   </div>
 
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
-                    <span>{affiliate.id}</span>
+                    <span>{affiliate.affiliateCode || affiliate.id}</span>
 
                     <span className="hidden text-slate-300 sm:inline">
-                      •
+                      ΓÇó
                     </span>
 
                     <span>Affiliate Partner</span>
@@ -172,51 +237,55 @@ function AffiliateDetails() {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Pencil size={16} />
-                  Edit
-                </button>
-
-                {affiliate.status === "Pending" && (
-                  <>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </button>
-
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                    >
-                      <CheckCircle2 size={16} />
-                      Approve
-                    </button>
-                  </>
-                )}
-
-                {affiliate.status === "Approved" && (
+              <div className="flex flex-wrap items-center gap-2">
+                {currentStatus !== "pending" && (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("pending")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Clock3 size={16} />
+                    Set Pending
+                  </button>
+                )}
+
+                {currentStatus !== "rejected" && currentStatus !== "reject" && (
+                  <button
+                    type="button"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("reject")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <XCircle size={16} />
                     Reject
                   </button>
                 )}
 
-                {affiliate.status === "Rejected" && (
+                {currentStatus !== "blocked" && (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("blocked")}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <CheckCircle2 size={16} />
+                    <Ban size={16} />
+                    Block
+                  </button>
+                )}
+
+                {currentStatus !== "approved" && (
+                  <button
+                    type="button"
+                    disabled={updatingStatus}
+                    onClick={() => handleStatusChange("approved")}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {updatingStatus ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={16} />
+                    )}
                     Approve
                   </button>
                 )}
@@ -250,7 +319,7 @@ function AffiliateDetails() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <InfoItem
                   label="Full Name"
-                  value={affiliate.fullName}
+                  value={affiliate.name}
                 />
 
                 <InfoItem
@@ -282,7 +351,7 @@ function AffiliateDetails() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <InfoItem
                   label="Website / Instagram"
-                  value={affiliate.website}
+                  value={website || "ΓÇö"}
                   icon={Globe}
                 />
 
@@ -294,21 +363,23 @@ function AffiliateDetails() {
               </div>
 
               {/* Website */}
-              <div className="mt-6 border-t border-slate-100 pt-6">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-                  Social / Website
-                </p>
+              {websiteUrl && (
+                <div className="mt-6 border-t border-slate-100 pt-6">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Social / Website
+                  </p>
 
-                <a
-                  href={websiteUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
-                >
-                  <Globe size={17} />
-                  Visit Profile
-                </a>
-              </div>
+                  <a
+                    href={websiteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+                  >
+                    <Globe size={17} />
+                    Visit Profile
+                  </a>
+                </div>
+              )}
             </section>
 
             {/* Orders */}
@@ -316,12 +387,12 @@ function AffiliateDetails() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                    <ShoppingCartIcon />
+                    <ShoppingCart size={19} />
                   </div>
 
                   <div>
                     <h2 className="font-semibold text-slate-900">
-                      Orders
+                      Orders ({orders.length})
                     </h2>
 
                     <p className="mt-1 text-xs text-slate-500">
@@ -330,28 +401,93 @@ function AffiliateDetails() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
+                <Link
+                  to="/admin/orders"
                   className="text-sm font-semibold text-slate-700 hover:text-slate-900"
                 >
                   View All Orders
-                </button>
+                </Link>
               </div>
 
-              <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
-                  <ShoppingCartIcon />
+              {orders.length > 0 ? (
+                <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[560px] text-left">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/70">
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Order Number
+                        </th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Customer
+                        </th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Amount
+                        </th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Date
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr
+                          key={order.id}
+                          className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                        >
+                          <td className="px-4 py-3.5 text-sm font-semibold text-blue-600">
+                            <Link
+                              to={`/admin/orders/${order.id}`}
+                              className="hover:underline"
+                            >
+                              {order.orderNumber || order.id}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <p className="text-sm font-medium text-slate-900">
+                              {order.customer?.name || "ΓÇö"}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {order.customer?.email || "ΓÇö"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm font-bold text-slate-900">
+                            {formatCurrency(order.amount)}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-slate-600">
+                            {formatDate(order.date)}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <Link
+                              to={`/admin/orders/${order.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <Eye size={14} />
+                              View
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              ) : (
+                <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+                    <ShoppingCart size={19} />
+                  </div>
 
-                <p className="mt-3 text-sm font-semibold text-slate-800">
-                  No orders available
-                </p>
+                  <p className="mt-3 text-sm font-semibold text-slate-800">
+                    No orders available
+                  </p>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  Affiliate orders will appear here once the
-                  order API is connected.
-                </p>
-              </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    No orders have been placed with this affiliate yet.
+                  </p>
+                </div>
+              )}
             </section>
           </div>
 
@@ -384,7 +520,7 @@ function AffiliateDetails() {
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {affiliate.appliedAt}
+                      {formatDate(affiliate.appliedDate)}
                     </p>
                   </div>
                 </div>
@@ -397,11 +533,11 @@ function AffiliateDetails() {
 
                   <div>
                     <p className="text-xs text-slate-400">
-                      Application ID
+                      Affiliate Code
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {affiliate.id}
+                      {affiliate.affiliateCode || affiliate.id}
                     </p>
                   </div>
                 </div>
@@ -426,7 +562,7 @@ function AffiliateDetails() {
                     </p>
 
                     <p className="mt-1 text-lg font-bold text-purple-900">
-                      {affiliate.audienceSize}
+                      {affiliate.audienceSize || "ΓÇö"}
                     </p>
                   </div>
                 </div>
@@ -453,7 +589,7 @@ function AffiliateDetails() {
                   </p>
 
                   <p className="truncate text-sm font-medium text-slate-700">
-                    {affiliate.email}
+                    {affiliate.email || "ΓÇö"}
                   </p>
                 </div>
               </a>
@@ -462,25 +598,6 @@ function AffiliateDetails() {
         </div>
       </div>
     </AdminLayout>
-  );
-}
-
-function ShoppingCartIcon() {
-  return (
-    <svg
-      width="19"
-      height="19"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="9" cy="20" r="1" />
-      <circle cx="19" cy="20" r="1" />
-      <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 8H6" />
-    </svg>
   );
 }
 

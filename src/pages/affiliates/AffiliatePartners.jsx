@@ -1,90 +1,116 @@
-import { useMemo, useState } from "react";
 import {
   CalendarDays,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   Globe,
+  Loader2,
   Mail,
   Search,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import AdminLayout from "../../components/layout/AdminLayout";
-import { affiliates } from "../../data/affiliates";
+import useAffiliate from "../../customHooks/useAffiliate";
 
 function StatusBadge({ status }) {
+  const normalized = (status || "").toLowerCase();
+
   const statusStyles = {
-    Pending: {
+    pending: {
+      label: "Pending",
       wrapper: "bg-amber-50 text-amber-700 ring-amber-200",
       dot: "bg-amber-500",
     },
-    Approved: {
+    approved: {
+      label: "Approved",
       wrapper: "bg-emerald-50 text-emerald-700 ring-emerald-200",
       dot: "bg-emerald-500",
     },
-    Rejected: {
+    rejected: {
+      label: "Rejected",
       wrapper: "bg-red-50 text-red-700 ring-red-200",
       dot: "bg-red-500",
     },
   };
 
-  const style =
-    statusStyles[status] || {
-      wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
-      dot: "bg-slate-400",
-    };
+  const style = statusStyles[normalized] || {
+    label: status || "Unknown",
+    wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
+    dot: "bg-slate-400",
+  };
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style.wrapper}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {status}
+      {style.label}
     </span>
   );
 }
 
+function formatDate(dateString) {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getInitials(name) {
+  if (!name) return "AF";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function AffiliatePartners() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const {
+    affiliates,
+    stats,
+    loading,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    pagination,
+    setPage,
+    setLimit,
+  } = useAffiliate({ initialPage: 1, initialLimit: 25 });
 
-  const filteredAffiliates = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+  const { page, limit, total, totalPage } = pagination;
 
-    return affiliates.filter((affiliate) => {
-      const matchesSearch =
-        !searchValue ||
-        affiliate.id.toLowerCase().includes(searchValue) ||
-        affiliate.fullName.toLowerCase().includes(searchValue) ||
-        affiliate.email.toLowerCase().includes(searchValue) ||
-        affiliate.website.toLowerCase().includes(searchValue) ||
-        affiliate.audienceSize
-          .toLowerCase()
-          .includes(searchValue);
+  const startRecord = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endRecord = Math.min(page * limit, total);
 
-      const matchesStatus =
-        statusFilter === "All" ||
-        affiliate.status === statusFilter;
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    const safeTotalPage = Math.max(1, totalPage);
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [search, statusFilter]);
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    let end = Math.min(safeTotalPage, start + maxVisible - 1);
 
-  const totalAffiliates = affiliates.length;
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
 
-  const pendingAffiliates = affiliates.filter(
-    (affiliate) => affiliate.status === "Pending"
-  ).length;
-
-  const approvedAffiliates = affiliates.filter(
-    (affiliate) => affiliate.status === "Approved"
-  ).length;
-
-  const rejectedAffiliates = affiliates.filter(
-    (affiliate) => affiliate.status === "Rejected"
-  ).length;
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
   return (
     <AdminLayout>
@@ -122,7 +148,7 @@ function AffiliatePartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {totalAffiliates}
+                  {stats.totalAffiliates}
                 </p>
 
                 <p className="mt-1 text-xs text-slate-400">
@@ -145,7 +171,7 @@ function AffiliatePartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {pendingAffiliates}
+                  {stats.pendingAffiliated}
                 </p>
 
                 <p className="mt-1 text-xs text-amber-600">
@@ -168,7 +194,7 @@ function AffiliatePartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {approvedAffiliates}
+                  {stats.approvedAffiliated}
                 </p>
 
                 <p className="mt-1 text-xs text-emerald-600">
@@ -191,7 +217,7 @@ function AffiliatePartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {rejectedAffiliates}
+                  {stats.rejectedAffiliated}
                 </p>
 
                 <p className="mt-1 text-xs text-red-500">
@@ -221,7 +247,7 @@ function AffiliatePartners() {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 {/* Search */}
                 <div className="relative sm:w-80">
                   <Search
@@ -236,8 +262,19 @@ function AffiliatePartners() {
                       setSearch(event.target.value)
                     }
                     placeholder="Search affiliates..."
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
                   />
+
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      aria-label="Clear search"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Status */}
@@ -249,16 +286,37 @@ function AffiliatePartners() {
                   className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                 >
                   <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
                 </select>
+
+                {/* Rows per page */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Rows:</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => setLimit(Number(e.target.value))}
+                    className="h-11 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="relative min-h-[200px] overflow-x-auto">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+                <Loader2 size={28} className="animate-spin text-purple-600" />
+              </div>
+            )}
+
             <table className="w-full min-w-[950px]">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/70 text-left">
@@ -293,14 +351,10 @@ function AffiliatePartners() {
               </thead>
 
               <tbody>
-                {filteredAffiliates.length > 0 ? (
-                  filteredAffiliates.map((affiliate) => {
-                    const initials = affiliate.fullName
-                      .split(" ")
-                      .map((name) => name[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase();
+                {affiliates.length > 0 ? (
+                  affiliates.map((affiliate) => {
+                    const initials = getInitials(affiliate.name);
+                    const website = affiliate.websiteInstagram || "";
 
                     return (
                       <tr
@@ -310,17 +364,13 @@ function AffiliatePartners() {
                         {/* Affiliate */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">
-                              {initials}
-                            </div>
-
                             <div>
                               <p className="text-sm font-semibold text-slate-900">
-                                {affiliate.fullName}
+                                {affiliate.name || "-"}
                               </p>
 
                               <p className="mt-0.5 text-xs text-slate-400">
-                                {affiliate.id}
+                                {affiliate.affiliateCode || affiliate.id}
                               </p>
                             </div>
                           </div>
@@ -334,31 +384,35 @@ function AffiliatePartners() {
                               className="text-slate-400"
                             />
 
-                            {affiliate.email}
+                            {affiliate.email || "-"}
                           </div>
                         </td>
 
                         {/* Website */}
                         <td className="px-5 py-4">
-                          <a
-                            href={
-                              affiliate.website.startsWith("http")
-                                ? affiliate.website
-                                : `https://${affiliate.website}`
-                            }
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
-                          >
-                            <Globe size={15} />
-                            {affiliate.website}
-                          </a>
+                          {website ? (
+                            <a
+                              href={
+                                website.startsWith("http")
+                                  ? website
+                                  : `https://${website}`
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                            >
+                              <Globe size={15} />
+                              {website}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-slate-400">-</span>
+                          )}
                         </td>
 
                         {/* Audience */}
                         <td className="px-5 py-4">
                           <span className="inline-flex rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">
-                            {affiliate.audienceSize}
+                            {affiliate.audienceSize || "-"}
                           </span>
                         </td>
 
@@ -371,7 +425,7 @@ function AffiliatePartners() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1.5 text-sm text-slate-500">
                             <CalendarDays size={15} />
-                            {affiliate.appliedAt}
+                            {formatDate(affiliate.appliedDate)}
                           </div>
                         </td>
 
@@ -415,19 +469,75 @@ function AffiliatePartners() {
             </table>
           </div>
 
-          {/* Footer */}
-          <div className="flex flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-500">
-              Showing{" "}
-              <span className="font-semibold text-slate-700">
-                {filteredAffiliates.length}
-              </span>{" "}
-              of{" "}
-              <span className="font-semibold text-slate-700">
-                {affiliates.length}
-              </span>{" "}
-              affiliates
-            </p>
+          {/* Footer & Pagination */}
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <p>
+                {total > 0 ? (
+                  <>
+                    Showing{" "}
+                    <span className="font-semibold text-slate-700">
+                      {startRecord}-{endRecord}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-slate-700">
+                      {total}
+                    </span>{" "}
+                    affiliates
+                  </>
+                ) : (
+                  "Showing 0 affiliates"
+                )}
+              </p>
+
+              <span className="text-slate-300">|</span>
+
+              <p>
+                Page{" "}
+                <span className="font-semibold text-slate-700">{page}</span>{" "}
+                of{" "}
+                <span className="font-semibold text-slate-700">
+                  {totalPage || 1}
+                </span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPage(page - 1)}
+                disabled={page <= 1}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={15} />
+                Prev
+              </button>
+
+              {getPageNumbers().map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => setPage(pageNum)}
+                  className={`h-9 min-w-[36px] rounded-lg px-2.5 text-xs font-medium transition ${
+                    pageNum === page
+                      ? "bg-purple-600 text-white shadow-sm"
+                      : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setPage(page + 1)}
+                disabled={page >= totalPage}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

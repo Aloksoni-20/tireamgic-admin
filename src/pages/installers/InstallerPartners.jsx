@@ -1,91 +1,118 @@
-import { useMemo, useState } from "react";
 import {
   Building2,
   CalendarDays,
+  ChevronLeft,
   ChevronRight,
   Clock3,
+  Loader2,
   Mail,
   MapPin,
   Phone,
   Search,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import AdminLayout from "../../components/layout/AdminLayout";
-import { installers } from "../../data/installers";
+import useInstaller from "../../customHooks/useInstaller";
 
 function StatusBadge({ status }) {
+  const normalized = (status || "").toLowerCase();
+
   const statusStyles = {
-    Pending: {
+    pending: {
+      label: "Pending",
       wrapper: "bg-amber-50 text-amber-700 ring-amber-200",
       dot: "bg-amber-500",
     },
-    Approved: {
+    approved: {
+      label: "Approved",
       wrapper: "bg-emerald-50 text-emerald-700 ring-emerald-200",
       dot: "bg-emerald-500",
     },
-    Rejected: {
+    rejected: {
+      label: "Rejected",
       wrapper: "bg-red-50 text-red-700 ring-red-200",
       dot: "bg-red-500",
     },
   };
 
-  const style =
-    statusStyles[status] || {
-      wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
-      dot: "bg-slate-400",
-    };
+  const style = statusStyles[normalized] || {
+    label: status || "Unknown",
+    wrapper: "bg-slate-50 text-slate-600 ring-slate-200",
+    dot: "bg-slate-400",
+  };
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${style.wrapper}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {status}
+      {style.label}
     </span>
   );
 }
 
+function formatDate(dateString) {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getInitials(name) {
+  if (!name) return "IN";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function InstallerPartners() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const {
+    installers,
+    stats,
+    loading,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    pagination,
+    setPage,
+    setLimit,
+  } = useInstaller({ initialPage: 1, initialLimit: 25 });
 
-  const filteredInstallers = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+  const { page, limit, total, totalPage } = pagination;
 
-    return installers.filter((installer) => {
-      const matchesSearch =
-        !searchValue ||
-        installer.id.toLowerCase().includes(searchValue) ||
-        installer.fullName.toLowerCase().includes(searchValue) ||
-        installer.businessName.toLowerCase().includes(searchValue) ||
-        installer.email.toLowerCase().includes(searchValue) ||
-        installer.phone.toLowerCase().includes(searchValue) ||
-        installer.city.toLowerCase().includes(searchValue);
+  const startRecord = total === 0 ? 0 : (page - 1) * limit + 1;
+  const endRecord = Math.min(page * limit, total);
 
-      const matchesStatus =
-        statusFilter === "All" ||
-        installer.status === statusFilter;
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    const safeTotalPage = Math.max(1, totalPage);
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [search, statusFilter]);
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    let end = Math.min(safeTotalPage, start + maxVisible - 1);
 
-  const totalInstallers = installers.length;
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
 
-  const pendingInstallers = installers.filter(
-    (installer) => installer.status === "Pending"
-  ).length;
-
-  const approvedInstallers = installers.filter(
-    (installer) => installer.status === "Approved"
-  ).length;
-
-  const rejectedInstallers = installers.filter(
-    (installer) => installer.status === "Rejected"
-  ).length;
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
   return (
     <AdminLayout>
@@ -127,7 +154,7 @@ function InstallerPartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {totalInstallers}
+                  {stats.totalInstallers}
                 </p>
 
                 <p className="mt-1 text-xs text-slate-400">
@@ -150,7 +177,7 @@ function InstallerPartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {pendingInstallers}
+                  {stats.pendingReview}
                 </p>
 
                 <p className="mt-1 text-xs text-amber-600">
@@ -173,7 +200,7 @@ function InstallerPartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {approvedInstallers}
+                  {stats.approvedInstallers}
                 </p>
 
                 <p className="mt-1 text-xs text-emerald-600">
@@ -196,7 +223,7 @@ function InstallerPartners() {
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {rejectedInstallers}
+                  {stats.rejectedInstallers}
                 </p>
 
                 <p className="mt-1 text-xs text-red-500">
@@ -226,7 +253,7 @@ function InstallerPartners() {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 {/* Search */}
                 <div className="relative sm:w-80">
                   <Search
@@ -241,8 +268,19 @@ function InstallerPartners() {
                       setSearch(event.target.value)
                     }
                     placeholder="Search installers..."
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-9 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
                   />
+
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      aria-label="Clear search"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Status */}
@@ -254,16 +292,37 @@ function InstallerPartners() {
                   className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                 >
                   <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
                 </select>
+
+                {/* Rows per page */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Rows:</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => setLimit(Number(e.target.value))}
+                    className="h-11 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="relative min-h-[200px] overflow-x-auto">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+                <Loader2 size={28} className="animate-spin text-blue-600" />
+              </div>
+            )}
+
             <table className="w-full min-w-[1050px]">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/70 text-left">
@@ -302,14 +361,9 @@ function InstallerPartners() {
               </thead>
 
               <tbody>
-                {filteredInstallers.length > 0 ? (
-                  filteredInstallers.map((installer) => {
-                    const initials = installer.fullName
-                      .split(" ")
-                      .map((name) => name[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase();
+                {installers.length > 0 ? (
+                  installers.map((installer) => {
+                    const initials = getInitials(installer.name);
 
                     return (
                       <tr
@@ -319,17 +373,13 @@ function InstallerPartners() {
                         {/* Installer */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
-                              {initials}
-                            </div>
-
                             <div>
                               <p className="text-sm font-semibold text-slate-900">
-                                {installer.fullName}
+                                {installer.name || "-"}
                               </p>
 
                               <p className="mt-0.5 text-xs text-slate-400">
-                                {installer.id}
+                                {installer.installerCode || installer.id}
                               </p>
                             </div>
                           </div>
@@ -338,7 +388,7 @@ function InstallerPartners() {
                         {/* Business */}
                         <td className="px-5 py-4">
                           <p className="text-sm font-medium text-slate-700">
-                            {installer.businessName}
+                            {installer.businessName || "-"}
                           </p>
                         </td>
 
@@ -347,12 +397,12 @@ function InstallerPartners() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5 text-xs text-slate-600">
                               <Mail size={13} className="text-slate-400" />
-                              {installer.email}
+                              {installer.email || "-"}
                             </div>
 
                             <div className="flex items-center gap-1.5 text-xs text-slate-400">
                               <Phone size={13} />
-                              {installer.phone}
+                              {installer.phoneNumber ?? "-"}
                             </div>
                           </div>
                         </td>
@@ -365,14 +415,14 @@ function InstallerPartners() {
                               className="text-slate-400"
                             />
 
-                            {installer.city}
+                            {installer.location || "-"}
                           </div>
                         </td>
 
                         {/* Experience */}
                         <td className="px-5 py-4">
                           <span className="text-sm text-slate-600">
-                            {installer.experience}
+                            {installer.experience || "-"}
                           </span>
                         </td>
 
@@ -385,7 +435,7 @@ function InstallerPartners() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1.5 text-sm text-slate-500">
                             <CalendarDays size={15} />
-                            {installer.appliedAt}
+                            {formatDate(installer.appliedOn)}
                           </div>
                         </td>
 
@@ -429,19 +479,75 @@ function InstallerPartners() {
             </table>
           </div>
 
-          {/* Footer */}
-          <div className="flex flex-col gap-2 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-500">
-              Showing{" "}
-              <span className="font-semibold text-slate-700">
-                {filteredInstallers.length}
-              </span>{" "}
-              of{" "}
-              <span className="font-semibold text-slate-700">
-                {installers.length}
-              </span>{" "}
-              installers
-            </p>
+          {/* Footer & Pagination */}
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <p>
+                {total > 0 ? (
+                  <>
+                    Showing{" "}
+                    <span className="font-semibold text-slate-700">
+                      {startRecord}-{endRecord}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-slate-700">
+                      {total}
+                    </span>{" "}
+                    installers
+                  </>
+                ) : (
+                  "Showing 0 installers"
+                )}
+              </p>
+
+              <span className="text-slate-300">|</span>
+
+              <p>
+                Page{" "}
+                <span className="font-semibold text-slate-700">{page}</span>{" "}
+                of{" "}
+                <span className="font-semibold text-slate-700">
+                  {totalPage || 1}
+                </span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPage(page - 1)}
+                disabled={page <= 1}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={15} />
+                Prev
+              </button>
+
+              {getPageNumbers().map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => setPage(pageNum)}
+                  className={`h-9 min-w-[36px] rounded-lg px-2.5 text-xs font-medium transition ${
+                    pageNum === page
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setPage(page + 1)}
+                disabled={page >= totalPage}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
